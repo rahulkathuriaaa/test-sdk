@@ -89,6 +89,20 @@ export class Mizu {
   }
 
   /**
+   * Get network info
+   */
+  get networkInfo() {
+    return {
+      name: this.network,
+      chainId: this.network === Network.MAINNET ? 1 : 2,
+      url:
+        this.network === Network.MAINNET
+          ? 'https://fullnode.mainnet.aptoslabs.com/v1'
+          : 'https://fullnode.testnet.aptoslabs.com/v1',
+    };
+  }
+
+  /**
    *
    *
    */
@@ -286,7 +300,7 @@ export class Mizu {
   /**
    * User interactive
    *
-   *
+   * @param args.orderId Order ID
    * return bool
    */
   async confirmOrder(args: { orderId: string }) {

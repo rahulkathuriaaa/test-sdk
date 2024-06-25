@@ -84,7 +84,7 @@ export const confirmOrderQuery = gql`
 `;
 
 /**
- * Get Order By ID
+ * Fetch Order By ID
  */
 export const fetchOrderQuery = gql`
   query fetchOrderQuery($id: uuid = "") {
@@ -102,6 +102,15 @@ export const fetchOrderQuery = gql`
         type
       }
     }
+  }
+`;
+
+/**
+ * Fetch order hash
+ */
+export const fetchOrderHashQuery = gql`
+  query fetchOrderHashQuery($orderId: String = "") {
+    getOrderHash(orderId: $orderId)
   }
 `;
 

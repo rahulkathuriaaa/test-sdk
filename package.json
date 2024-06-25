@@ -7,11 +7,13 @@
     "lint": "eslint .",
     "changeset-version": "pnpm changeset version",
     "run:example": "pnpm --filter web-app dev",
+    "adapter": "pnpm --filter aptos-wallet-adapter",
+    "dev:adapter": "pnpm adapter clean && pnpm adapter build --watch",
+    "core": "pnpm --filter core",
     "dev:core": "pnpm core clean && pnpm core build --watch",
+    "wallet-ui": "pnpm --filter wallet-ui",
     "dev:wallet-ui": "pnpm wallet-ui build --watch",
     "format": "prettier --write .",
-    "wallet-ui": "pnpm --filter wallet-ui",
-    "core": "pnpm --filter core",
     "app": "pnpm --filter web-app"
   },
   "keywords": [],
@@ -38,5 +40,6 @@
   "lint-staged": {
     "**/*.{js,ts,tsx}": [],
     "**/*": "prettier --write --ignore-unknown"
-  }
+  },
+  "packageManager": "pnpm@9.3.0"
 }
