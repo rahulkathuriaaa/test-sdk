@@ -164,3 +164,16 @@ export const bindGoogleQuery = gql`
   }
 `;
 
+/**
+ * Create order with code
+ */
+export const createOrderWithCodeMutation = gql`
+  mutation createOrderWithCodeMutation(
+    $appId: String = ""
+    $authCode: String = ""
+    $payload: String = ""
+  ) {
+    createOrderWithCode(appId: $appId, authCode: $authCode, payload: $payload)
+  }
+`;
+

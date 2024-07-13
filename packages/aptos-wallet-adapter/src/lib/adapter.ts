@@ -10,10 +10,56 @@ import {
   WalletName,
   WalletReadyState,
 } from '@aptos-labs/wallet-adapter-core';
-import { Mizu, ORDER_STATUS } from '../../../core/dist';
+import Postmate from 'postmate';
+import { Mizu } from '../../../core/dist';
 import { WALLET_ICON, WALLET_NAME, WALLET_WEB_URL } from '../config';
 
+const initStyles = () => {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .mizu-wallet-frame {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      border: none;
+      z-index: 999999999;
+      inset: 0px;
+      color-scheme: light;
+    }
+  `;
+  document.head.appendChild(style);
+};
+
 export const MizuWalletName = 'Mizu Wallet' as WalletName<'Mizu Wallet'>;
+const ORIGIN = 'https://mizu.io';
+
+let faviconData: any = '';
+const initFavicon = async () => {
+  // TODO: optimize favicon fetching
+  let fav = document?.querySelector('link[rel=icon]')?.getAttribute('href');
+
+  fav = fav ? `${window.location?.origin}${fav}` : '';
+  const readImageToBase64 = (url: string) =>
+    fetch(url)
+      .then((response) => response.blob())
+      .then(
+        (blob) =>
+          new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = reject;
+            reader.onload = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          }),
+      );
+  if (fav) {
+    faviconData = await readImageToBase64(fav);
+  }
+};
+initFavicon();
+
+let authCode: string = '';
 
 export class MizuWallet implements AdapterPlugin {
   readonly url = WALLET_WEB_URL;
@@ -31,19 +77,57 @@ export class MizuWallet implements AdapterPlugin {
       appId: args.appId,
       network: args.network,
     });
+
+    initStyles();
   }
 
   async connect(): Promise<AccountInfo> {
     try {
-      // TODO: for our login
-      await this.provider?.loginInTG(
-        'user=%7B%22id%22%3A6310457231%2C%22first_name%22%3A%22Ice%20%7C%20mizu%22%2C%22last_name%22%3A%22%22%2C%22username%22%3A%22mizu_ice%22%2C%22language_code%22%3A%22zh-hans%22%2C%22allows_write_to_pm%22%3Atrue%7D&chat_instance=3182547347491720100&chat_type=sender&auth_date=1719219854&hash=829fb06341c60297efd108f27edc9648c93839b03faa8d27d7d14f8db91411a3',
-      );
-      return {
-        address: await this.provider?.getUserWalletAddress(),
-        publicKey: '',
-      };
+      /**
+       * Init Postmate iframe
+       *
+       * Check if user is logged in first.
+       */
+      const handshake = await new Postmate({
+        container: document.body, // Element to inject frame into
+        url: `${ORIGIN}/wallet/checkLogin?network=${this.provider?.network}`,
+        name: 'mizu-wallet-login',
+        classListArray: ['mizu-wallet-frame', 'mizu-wallet-login-frame'],
+        model: {
+          connectInfo: {
+            appId: this.provider?.appId,
+            network: this.provider?.network,
+          },
+          website: {
+            favicon: faviconData,
+            origin: window.location?.origin,
+            name: window.document.title,
+          },
+        },
+      });
+
+      /**
+       * Wait for handshake to complete
+       * And listen for events to get user data(sessionID, address, etc.)
+       */
+      handshake.on('close-frame', () => {
+        handshake.destroy();
+      });
+
+      return new Promise((resolve, _) => {
+        handshake.on('login', (data: any) => {
+          authCode = data.code;
+
+          console.log('authCode', data, authCode);
+
+          resolve({
+            address: data.address,
+            publicKey: '',
+          });
+        });
+      });
     } catch (error: any) {
+      console.log(error);
       throw error;
     }
   }
@@ -59,66 +143,109 @@ export class MizuWallet implements AdapterPlugin {
 
   async disconnect(): Promise<void> {
     try {
+      authCode = '';
+
+      /**
+       * Init Postmate iframe
+       * Remove session
+       */
+      const handshake = await new Postmate({
+        container: document.body, // Element to inject frame into
+        url: `${ORIGIN}/wallet/logout?network=${this.provider?.network}`,
+        name: 'mizu-wallet-logout',
+        classListArray: ['mizu-wallet-frame', 'mizu-wallet-logout-frame'],
+        model: {
+          connectInfo: {
+            appId: this.provider?.appId,
+            network: this.provider?.network,
+          },
+        },
+      });
+
+      /**
+       * Wait for handshake to complete
+       * And listen for events to get user data(sessionID, address, etc.)
+       */
+      handshake.on('close-frame', () => {
+        handshake.destroy();
+      });
+
       await this.provider?.logout();
     } catch (error: any) {
       throw error;
     }
   }
 
+  // this should be sdk maybe
+  // mutation MyMutation($appId: String = "", $appId1: String = "", $authCode: String = "", $payload: String = "") {
+  //   createOrderWithCode(appId: $appId1, authCode: $authCode, payload: $payload)
+  // }
+
   async signAndSubmitTransaction(
     transaction: Types.TransactionPayload,
     options?: any,
   ): Promise<{ hash: Types.HexEncodedBytes }> {
+    console.log(options);
+    /**
+     * Init Postmate iframe
+     * Check if user is logged in first.
+     *
+     * if it is, direct to create order.
+     * Create order and confirm it.
+     *
+     * send code, payload
+     */
     try {
-      const { type, ...rest } = transaction;
-      console.log(options);
-      const payload = {
-        function: (rest as any).function,
-        functionArguments: (rest as any).arguments || (rest as any).functionArguments,
-        typeArguments: (rest as any).type_arguments || (rest as any).typeArguments,
-      };
-
-      const MAX_POLL_COUNT = 10;
-      const POLL_INTERVAL = 1000;
-      let pollCount = 0;
-
-      const orderId: string = await this.provider?.createOrder({
-        payload,
-      });
-      const confirmed: boolean = await this.provider?.confirmOrder({
-        orderId,
+      // create order by code
+      const orderId = await this.provider?.createOrderWithCode({
+        code: authCode,
+        payload: transaction,
       });
 
-      if (confirmed) {
-        while (pollCount < MAX_POLL_COUNT) {
-          // polling
-          const order: any = await this.provider?.fetchOrder({
-            id: orderId,
-          });
+      if (!orderId) throw new Error('Transaction creation failed');
 
-          if (order.status == ORDER_STATUS.SUCCESS) {
-            const transaction = order.transactions.find((tx: any) => tx.type == 2);
-            if (transaction) {
-              return {
-                hash: transaction.hash,
-              };
-            }
-          } else if (order.status == ORDER_STATUS.FAIL) {
-            throw new Error('Transaction failed');
+      /**
+       * Init Postmate iframe
+       *
+       * Check if user is logged in first.
+       */
+      const handshake = await new Postmate({
+        container: document.body, // Element to inject frame into
+        url: `${ORIGIN}/wallet/checkLogin?redirect_url=${encodeURIComponent('/wallet/transaction')}&network=${this.provider?.network}`,
+        name: 'mizu-wallet-login',
+        classListArray: ['mizu-wallet-frame', 'mizu-wallet-sign-frame'],
+        model: {
+          connectInfo: {
+            appId: this.provider?.appId,
+            network: this.provider?.network,
+          },
+          website: {
+            favicon: faviconData,
+            origin: window.location?.origin,
+            name: window.document.title,
+          },
+          transactionInfo: {
+            orderId: orderId,
+            payload: transaction,
+          },
+        },
+      });
+
+      handshake.on('close-frame', () => {
+        handshake.destroy();
+      });
+
+      return new Promise((resolve, reject) => {
+        handshake.on('submitted', (data: any) => {
+          if (data.error) {
+            return reject(data.error);
           }
 
-          await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
-          pollCount++;
-        }
-
-        if (pollCount >= MAX_POLL_COUNT) {
-          throw new Error('Transaction timeout');
-        }
-      } else {
-        throw new Error('Transaction failed');
-      }
-
-      return { hash: '' };
+          resolve({
+            hash: data.transactions?.filter((tx: any) => tx.type === 2)?.[0]?.hash || '',
+          });
+        });
+      });
     } catch (error: any) {
       console.log(error);
       throw error;

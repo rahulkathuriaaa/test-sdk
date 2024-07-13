@@ -1,7 +1,7 @@
 {
   "name": "@mizuwallet-sdk/aptos-wallet-adapter",
   "description": "Mizu Wallet Adapter for Aptos",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@mizuwallet-sdk/core": "workspace:*",
+    "@types/postmate": "^1.5.4",
     "typescript": "^5.4.5",
     "vite": "^5.2.11",
     "vite-plugin-dts": "^3.9.1"
@@ -37,8 +38,10 @@
     "@aptos-labs/ts-sdk": "^1.22.1",
     "@aptos-labs/wallet-adapter-core": "^4.7.0",
     "@aptos-labs/wallet-standard": "^0.1.0",
+    "@blocto/sdk": "^0.10.3",
     "@msafe/aptos-wallet": "^6.1.1",
-    "buffer": "^6.0.3"
+    "buffer": "^6.0.3",
+    "postmate": "^1.5.2"
   },
   "peerDependencies": {
     "@mizuwallet-sdk/core": "workspace:*"
@@ -48,4 +51,3 @@
     "src"
   ]
 }
-

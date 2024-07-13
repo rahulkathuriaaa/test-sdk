@@ -7,7 +7,7 @@ export default defineConfig({
   build: {
     lib: { entry: resolve(__dirname, 'src/index.ts'), formats: ['es'], fileName: 'index' },
     rollupOptions: {
-      external: ['graphql-request', 'buffer', '@aptos-labs/ts-sdk'],
+      external: ['graphql-request', 'buffer', 'jwt-decode', '@aptos-labs/ts-sdk'],
     },
   },
   resolve: { alias: { src: resolve('src/') } },

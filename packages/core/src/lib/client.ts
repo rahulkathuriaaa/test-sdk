@@ -1,6 +1,7 @@
 import { Network } from '@aptos-labs/ts-sdk';
 import request from 'graphql-request';
 import { decodeJWT } from '../helpers/JWTHelper';
+import { transferPayloadToV2 } from '../helpers/PayloadHelper';
 import {
   CheckUserIsExistQueryByTgId,
   TGLoginMutation,
@@ -11,6 +12,7 @@ import {
   bindGoogleQuery,
   confirmOrderQuery,
   createOrderQuery,
+  createOrderWithCodeMutation,
   fetchOrderListQuery,
   fetchOrderQuery,
   simulateOrderQuery,
@@ -76,6 +78,35 @@ export class Mizu {
    */
   private checkJWTToken() {
     if (!this.jwtToken) throw new Error('JWT Token not found. Please login first.');
+  }
+
+  /**
+   * Decode JWT Token
+   */
+  static decodeJWTToken(tokenStr: string) {
+    const [userId, jwt]: any = decodeJWT(tokenStr);
+    return [userId, jwt];
+  }
+
+  /**
+   * Clone MizuWallet SDK Core Client
+   *
+   * @param args.appId - Application ID
+   * @param args.network - Network.MAINNET | Network.TESTNET
+   * @param args.jwtToken - JWT Token
+   */
+  static clone(args: {
+    appId: string;
+    network: Network.MAINNET | Network.TESTNET;
+    jwtToken: string;
+  }) {
+    if (!args.appId) throw new Error('appId is required');
+    if (!args.network) throw new Error('network is required');
+    if (!args.jwtToken) throw new Error('jwtToken is required');
+
+    const clone: Mizu = new Mizu({ appId: args.appId, network: args.network });
+    [clone.userId, clone.jwtToken] = Mizu.decodeJWTToken(args.jwtToken);
+    return clone;
   }
 
   /**
@@ -147,10 +178,8 @@ export class Mizu {
     }
 
     try {
-      const [userId, jwt]: any = decodeJWT(tokenStr);
-      this.userId = userId;
-      this.jwtToken = jwt;
-    } catch {
+      [this.userId, this.jwtToken] = Mizu.decodeJWTToken(tokenStr);
+    } catch (e) {
       this.logout();
     }
   }
@@ -276,6 +305,7 @@ export class Mizu {
    * Create Order
    *
    * @param args.payload TransactionPayload
+   * @param args.opt.code
    * @returns
    */
   async createOrder(args: { payload: any }) {
@@ -287,7 +317,7 @@ export class Mizu {
       document: createOrderQuery,
       variables: {
         appId: this.appId,
-        payload: window.btoa(JSON.stringify(args.payload)),
+        payload: window.btoa(JSON.stringify(transferPayloadToV2(args.payload))),
       },
       requestHeaders: {
         Authorization: `Bearer ${this.jwtToken}`,
@@ -295,6 +325,30 @@ export class Mizu {
     });
 
     return result?.createOrder;
+  }
+
+  /**
+   * Create Order with Code
+   *
+   * @param args.payload
+   * @param args.code
+   * @returns
+   */
+  async createOrderWithCode(args: { payload: any; code: string }) {
+    this.checkInitialized();
+
+    const result: any = await request({
+      url: this.graphqlEndPoint,
+      document: createOrderWithCodeMutation,
+      variables: {
+        appId: this.appId,
+        authCode: args.code,
+        payload: window.btoa(JSON.stringify(transferPayloadToV2(args.payload))),
+      },
+      requestHeaders: {},
+    });
+
+    return result?.createOrderWithCode;
   }
 
   /**
@@ -353,11 +407,13 @@ export class Mizu {
   /**
    * Wait for order
    *
-   * @param args.id order.id
+   * @param args.orderId order.id
    * @returns
    */
-  async waitForOrder(args: { id: string }) {
-    let order = await this.fetchOrder(args);
+  async waitForOrder(args: { orderId: string }) {
+    let order = await this.fetchOrder({
+      id: args.orderId,
+    });
     let MAX_RETRY = 20;
 
     while (
@@ -365,7 +421,13 @@ export class Mizu {
       ![ORDER_STATUS.SUCCESS, ORDER_STATUS.FAIL, ORDER_STATUS.CANCELED].includes(order.status)
     ) {
       await new Promise((resolve) => setTimeout(resolve, 5000));
-      order = await this.fetchOrder(args);
+      order = await this.fetchOrder({
+        id: args.orderId,
+      });
+    }
+
+    if (order.status === ORDER_STATUS.FAIL) {
+      throw new Error('Order failed');
     }
 
     return order;
@@ -385,7 +447,6 @@ export class Mizu {
     this.checkJWTToken();
 
     const { limit = 10, offset = 0, status = [ORDER_STATUS.SUCCESS] } = fetchParams || {};
-    console.log(status);
 
     const result: any = await request({
       url: this.graphqlEndPoint,
