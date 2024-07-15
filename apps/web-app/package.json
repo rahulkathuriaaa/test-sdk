@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@aptos-labs/wallet-adapter-core": "^4.7.0",
-    "@mizuwallet-sdk/aptos-wallet-adapter": "workspace:^",
+    "@mizuwallet-sdk/aptos-wallet-adapter": "^0.0.2",
     "@vueuse/core": "^10.11.0",
     "vue": "^3.4.21"
   },

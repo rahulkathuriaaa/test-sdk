@@ -51,8 +51,8 @@ importers:
         specifier: ^4.7.0
         version: 4.7.0(@aptos-labs/ts-sdk@1.22.1)(@wallet-standard/core@1.0.3)(aptos@1.21.0)
       '@mizuwallet-sdk/aptos-wallet-adapter':
-        specifier: workspace:^
-        version: link:../../packages/aptos-wallet-adapter
+        specifier: ^0.0.2
+        version: 0.0.2(@mizuwallet-sdk/core@1.1.5(@aptos-labs/ts-sdk@1.22.1)(graphql-request@7.0.1(graphql@16.8.2)))(@wallet-standard/core@1.0.3)(aptos@1.21.0)
       '@vueuse/core':
         specifier: ^10.11.0
         version: 10.11.0(vue@3.4.29(typescript@5.4.5))
@@ -855,6 +855,17 @@ packages:
 
   '@microsoft/tsdoc@0.14.2':
     resolution: {integrity: sha512-9b8mPpKrfeGRuhFH5iO1iwCLeIIsV6+H1sRfxbkoGXIyQE2BTsPd9zqSqQJ+pv5sJ/hT5M1zvOFL02MnEezFug==}
+
+  '@mizuwallet-sdk/aptos-wallet-adapter@0.0.2':
+    resolution: {integrity: sha512-MS+LBHzGEeicMJ89mPn/3g3wKCr9g1IyM4KLYK0OMY6ubAI4Uz3W4Oar52tO7NiDTTkvo4qehzQ66YW53Vju5w==}
+    peerDependencies:
+      '@mizuwallet-sdk/core': 1.1.5
+
+  '@mizuwallet-sdk/core@1.1.5':
+    resolution: {integrity: sha512-SOPdJ6Ly1b3WR029lez+mgbYAxAaI7DP1tegrMCbdYq0j7AcX+RUzXTCv/a0CTVu26/v9PKgt2iK516vv/cv/Q==}
+    peerDependencies:
+      '@aptos-labs/ts-sdk': '>=1.14.0'
+      graphql-request: '>=7.0.1'
 
   '@molt/command@0.9.0':
     resolution: {integrity: sha512-1JI8dAlpqlZoXyKWVQggX7geFNPxBpocHIXQCsnxDjKy+3WX4SGyZVJXuLlqRRrX7FmQCuuMAfx642ovXmPA9g==}
@@ -4550,6 +4561,30 @@ snapshots:
       resolve: 1.19.0
 
   '@microsoft/tsdoc@0.14.2': {}
+
+  '@mizuwallet-sdk/aptos-wallet-adapter@0.0.2(@mizuwallet-sdk/core@1.1.5(@aptos-labs/ts-sdk@1.22.1)(graphql-request@7.0.1(graphql@16.8.2)))(@wallet-standard/core@1.0.3)(aptos@1.21.0)':
+    dependencies:
+      '@aptos-labs/ts-sdk': 1.22.1
+      '@aptos-labs/wallet-adapter-core': 4.7.0(@aptos-labs/ts-sdk@1.22.1)(@wallet-standard/core@1.0.3)(aptos@1.21.0)
+      '@aptos-labs/wallet-standard': 0.1.0(@aptos-labs/ts-sdk@1.22.1)(@wallet-standard/core@1.0.3)
+      '@blocto/sdk': 0.10.3(aptos@1.21.0)
+      '@mizuwallet-sdk/core': 1.1.5(@aptos-labs/ts-sdk@1.22.1)(graphql-request@7.0.1(graphql@16.8.2))
+      '@msafe/aptos-wallet': 6.1.1
+      buffer: 6.0.3
+      postmate: 1.5.2
+    transitivePeerDependencies:
+      - '@wallet-standard/core'
+      - aptos
+      - bufferutil
+      - debug
+      - utf-8-validate
+
+  '@mizuwallet-sdk/core@1.1.5(@aptos-labs/ts-sdk@1.22.1)(graphql-request@7.0.1(graphql@16.8.2))':
+    dependencies:
+      '@aptos-labs/ts-sdk': 1.22.1
+      buffer: 6.0.3
+      graphql-request: 7.0.1(graphql@16.8.2)
+      jwt-decode: 4.0.0
 
   '@molt/command@0.9.0':
     dependencies:
