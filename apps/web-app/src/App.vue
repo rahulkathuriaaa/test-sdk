@@ -27,10 +27,11 @@
 
         <label class="label cursor-pointer flex items-center gap-2">
           <span class="label-text">Network:</span>
-          <select class="select select-bordered w-full max-w-xs" v-model="network">
+          <!-- <select class="select select-bordered w-full max-w-xs" v-model="network">
             <option value="mainnet">Mainnet</option>
             <option value="testnet">Testnet</option>
-          </select>
+          </select> -->
+          {{ network }}
         </label>
       </div>
 
@@ -72,7 +73,7 @@
   import { copy, ShortAddress } from './utils';
 
   const APTOS_COIN = '0x1::aptos_coin::AptosCoin';
-  const network = ref('testnet');
+  const network = ref('mainnet');
   const hashURL = computed(() =>
     hash.value ? `https://explorer.aptoslabs.com/txn/${hash.value}?network=${network.value}` : '',
   );
