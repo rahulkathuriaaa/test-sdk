@@ -80,12 +80,15 @@
   // new id
   const wallets = computed(() => [
     new MizuWallet({
-      appId: network.value === 'testnet' ? 'dfa1794e-8412-4c9c-b28d-25ecd4c0b52f' : '',
+      appId:
+        network.value === 'testnet'
+          ? 'dfa1794e-8412-4c9c-b28d-25ecd4c0b52f'
+          : '7f3578d5-d0d1-4e05-a9a8-2b3f02e3e6f0',
       network: network.value as any,
     }),
   ]);
 
-  const walletCore = new WalletCore(wallets.value, ['Petra']);
+  const walletCore = computed(() => new WalletCore(wallets.value, ['Petra']));
   const address = ref('');
   const autoconnect = useStorage('autoconnect', true);
 
@@ -96,20 +99,21 @@
   };
 
   const connect = async () => {
-    await walletCore.connect(wallets.value[0].name);
-    const result: any = walletCore.account;
+    console.log(wallets.value, network.value);
+    await walletCore.value.connect(wallets.value[0].name);
+    const result: any = walletCore.value.account;
     address.value = result.address;
   };
 
   const disconnect = async () => {
-    await walletCore.disconnect();
+    await walletCore.value.disconnect();
     address.value = '';
   };
 
   const hash = ref('');
   const submitHandler = async () => {
     try {
-      const result: any = await walletCore.signAndSubmitTransaction({
+      const result: any = await walletCore.value.signAndSubmitTransaction({
         data: {
           function: '0x1::coin::transfer',
           typeArguments: [APTOS_COIN],
