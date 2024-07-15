@@ -2,8 +2,8 @@ import {
   AccountInfo,
   AdapterPlugin,
   AptosWalletErrorResult,
+  Network,
   NetworkInfo,
-  NetworkName,
   SignMessagePayload,
   SignMessageResponse,
   Types,
@@ -41,6 +41,8 @@ const initFavicon = async () => {
   let fav = document?.querySelector('link[rel=icon]')?.getAttribute('href');
 
   fav = fav ? `${window.location?.origin}${fav}` : '';
+  console.log(fav);
+
   const readImageToBase64 = (url: string) =>
     fetch(url)
       .then((response) => response.blob())
@@ -69,7 +71,7 @@ export class MizuWallet implements AdapterPlugin {
   provider: Mizu | undefined;
   readyState: WalletReadyState = WalletReadyState.Installed;
 
-  constructor(args: { appId: string; network: Extract<NetworkName, 'Mainnet' | 'Testnet'> }) {
+  constructor(args: { appId: string; network: Network.MAINNET | Network.TESTNET }) {
     if (!args.appId) throw new Error('MizuWallet: appId is required');
     if (!args.network) throw new Error('MizuWallet: network is required');
 
@@ -83,6 +85,9 @@ export class MizuWallet implements AdapterPlugin {
 
   async connect(): Promise<AccountInfo> {
     try {
+      if (document.querySelector('[name=mizu-wallet-login]')) {
+        return Promise.reject('Already start login process');
+      }
       /**
        * Init Postmate iframe
        *
@@ -117,8 +122,6 @@ export class MizuWallet implements AdapterPlugin {
       return new Promise((resolve, _) => {
         handshake.on('login', (data: any) => {
           authCode = data.code;
-
-          console.log('authCode', data, authCode);
 
           resolve({
             address: data.address,
