@@ -53,9 +53,6 @@ importers:
       '@mizuwallet-sdk/aptos-wallet-adapter':
         specifier: workspace:^
         version: link:../../packages/aptos-wallet-adapter
-      '@mizuwallet-sdk/wallet-ui':
-        specifier: workspace:^
-        version: link:../../packages/wallet-ui
       '@vueuse/core':
         specifier: ^10.11.0
         version: 10.11.0(vue@3.4.29(typescript@5.4.5))
