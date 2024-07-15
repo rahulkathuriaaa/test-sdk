@@ -84,7 +84,7 @@
         network.value === 'testnet'
           ? 'dfa1794e-8412-4c9c-b28d-25ecd4c0b52f'
           : '7f3578d5-d0d1-4e05-a9a8-2b3f02e3e6f0',
-      network: network.value as any,
+      network: network.value as never,
     }),
   ]);
 
