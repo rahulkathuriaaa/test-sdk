@@ -52,6 +52,19 @@ export const UserWalletAddressQuery = gql`
       sub_wallets {
         address
       }
+      google_user {
+        email
+      }
+      telegram_user {
+        firstName
+        lastName
+        photoUrl
+        userName
+      }
+      twitter_user {
+        name
+        userName
+      }
     }
   }
 `;

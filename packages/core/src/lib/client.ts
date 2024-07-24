@@ -230,6 +230,29 @@ export class Mizu {
   }
 
   /**
+   * fetch user wallet address
+   *
+   * @returns
+   */
+  async getUserInfo() {
+    this.checkInitialized();
+    this.checkJWTToken();
+
+    const result: any = await request({
+      url: this.graphqlEndPoint,
+      document: UserWalletAddressQuery,
+      variables: {
+        id: this.userId,
+      },
+      requestHeaders: {
+        Authorization: `Bearer ${this.jwtToken}`,
+      },
+    });
+
+    return result.walletUserByPk;
+  }
+
+  /**
    * Logout
    */
   logout() {
