@@ -11,8 +11,11 @@
     "dev:adapter": "pnpm adapter clean && pnpm adapter build --watch",
     "core": "pnpm --filter core",
     "dev:core": "pnpm core clean && pnpm core build --watch",
+    "protocol": "pnpm --filter protocol",
+    "dev:protocol": "pnpm core clean && pnpm protocol build --watch",
     "wallet-ui": "pnpm --filter wallet-ui",
     "dev:wallet-ui": "pnpm wallet-ui build --watch",
+    "build": "pnpm core build & pnpm protocol build & pnpm adapter build",
     "format": "prettier --write .",
     "app": "pnpm --filter web-app"
   },

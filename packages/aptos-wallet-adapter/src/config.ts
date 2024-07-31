@@ -1,4 +1,22 @@
+import { Network } from '@aptos-labs/ts-sdk';
 import { WalletName } from '@aptos-labs/wallet-adapter-core';
+
+export const MINI_APP_URL = 'https://t.me/mizuwallet_bot/mizuwallet';
+export const DEV_MINI_APP_URL = 'https://t.me/FWTOABot/fuzzwallettest';
+export const DEFAULT_MINI_APP_URL = (network: MizuSupportNetwork) =>
+  network === Network.TESTNET ? DEV_MINI_APP_URL : MINI_APP_URL;
+
+export const MZ_MSG_TYPE = {
+  CONNECT: '[Mizu Wallet Connection] ',
+  TRANSACTION: '[Mizu Wallet Transaction] ',
+};
+
+export type MizuSupportNetwork = Extract<Network, Network.MAINNET | Network.TESTNET>;
+
+export const MIZU_WALLET_ID = '07418a1b-9574-4449-bd34-2146db60b05c';
+export const MIZU_WALLET_TESTNET_ID = '0c460c1a-5175-4383-b1c2-35b934f5aa71';
+export const DEFAULT_MIZUWALLET_ID = (network: MizuSupportNetwork) =>
+  network === Network.TESTNET ? MIZU_WALLET_TESTNET_ID : MIZU_WALLET_ID;
 
 export const WALLET_NAME = 'Mizu Wallet' as WalletName<'Mizu Wallet'>;
 export const WALLET_WEB_URL = 'https://mizu.io';

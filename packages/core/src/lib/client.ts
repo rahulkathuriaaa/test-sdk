@@ -469,7 +469,7 @@ export class Mizu {
     this.checkInitialized();
     this.checkJWTToken();
 
-    const { limit = 10, offset = 0, status = [ORDER_STATUS.SUCCESS] } = fetchParams || {};
+    const { limit = 10, offset = 0 } = fetchParams || {};
 
     const result: any = await request({
       url: this.graphqlEndPoint,

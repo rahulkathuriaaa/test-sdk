@@ -1,5 +1,4 @@
 export const transferPayloadToV2 = (payload: any): any => {
-  console.log(payload, typeof payload);
   if (payload.arguments) {
     return {
       function: payload.function,
