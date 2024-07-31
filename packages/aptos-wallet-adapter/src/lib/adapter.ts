@@ -1,288 +1,263 @@
+import { Account, AccountAuthenticator, Network, SigningScheme } from '@aptos-labs/ts-sdk';
+import { AnyRawTransaction } from '@aptos-labs/wallet-adapter-core';
 import {
+  APTOS_CHAINS,
   AccountInfo,
-  AdapterPlugin,
-  AptosWalletErrorResult,
-  Network,
+  AptosConnectMethod,
+  AptosDisconnectMethod,
+  AptosFeatures,
+  AptosGetAccountMethod,
+  AptosGetNetworkMethod,
+  AptosOnAccountChangeMethod,
+  AptosOnNetworkChangeMethod,
+  AptosSignAndSubmitTransactionInput,
+  AptosSignAndSubmitTransactionMethod,
+  AptosSignAndSubmitTransactionOutput,
+  AptosSignMessageInput,
+  AptosSignMessageMethod,
+  AptosSignMessageOutput,
+  AptosSignTransactionMethod,
+  AptosWallet,
+  AptosWalletAccount,
+  AptosWalletError,
+  AptosWalletErrorCode,
+  IdentifierArray,
   NetworkInfo,
-  SignMessagePayload,
-  SignMessageResponse,
-  Types,
-  WalletName,
-  WalletReadyState,
-} from '@aptos-labs/wallet-adapter-core';
-import Postmate from 'postmate';
-import { Mizu } from '../../../core/dist';
-import { WALLET_ICON, WALLET_NAME, WALLET_WEB_URL } from '../config';
+  UserResponse,
+  UserResponseStatus,
+} from '@aptos-labs/wallet-standard';
+import { Mizu } from '@mizuwallet-sdk/core';
+import {
+  DEFAULT_MIZUWALLET_ID,
+  MZ_MSG_TYPE,
+  MizuSupportNetwork,
+  WALLET_ICON,
+  WALLET_NAME,
+  WALLET_WEB_URL,
+} from '../config';
+import TelegramMiniAppHelper from '../helpers/TelegramMiniAppHelper';
+import WebsiteHelper from '../helpers/WebsiteHelper';
+import { IsTelegram } from '../utils';
 
-const initStyles = () => {
-  const style = document.createElement('style');
-  style.innerHTML = `
-    .mizu-wallet-frame {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      border: none;
-      z-index: 999999999;
-      inset: 0px;
-      color-scheme: light;
-    }
-  `;
-  document.head.appendChild(style);
-};
+/**
+ * A class to create a mock wallet for demonstration a wallet
+ * implementation compatible with Aptos AIP-62 Wallet Standard
+ */
+export class MizuWalletAccount implements AptosWalletAccount {
+  address: string;
+  publicKey: Uint8Array;
+  chains: IdentifierArray = APTOS_CHAINS;
+  features: IdentifierArray = [];
+  signingScheme: SigningScheme;
+  label?: string;
+  icon?:
+    | `data:image/svg+xml;base64,${string}`
+    | `data:image/webp;base64,${string}`
+    | `data:image/png;base64,${string}`
+    | `data:image/gif;base64,${string}`
+    | undefined;
 
-export const MizuWalletName = 'Mizu Wallet' as WalletName<'Mizu Wallet'>;
-const ORIGIN = 'https://mizu.io';
-
-let faviconData: any = '';
-const initFavicon = async () => {
-  // TODO: optimize favicon fetching
-  let fav = document?.querySelector('link[rel=icon]')?.getAttribute('href');
-
-  fav = fav ? `${window.location?.origin}${fav}` : '';
-  console.log(fav);
-
-  const readImageToBase64 = (url: string) =>
-    fetch(url)
-      .then((response) => response.blob())
-      .then(
-        (blob) =>
-          new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onerror = reject;
-            reader.onload = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-          }),
-      );
-  if (fav) {
-    faviconData = await readImageToBase64(fav);
+  constructor(account: Account) {
+    this.address = account.accountAddress.toString();
+    this.publicKey = account.publicKey.toUint8Array();
+    this.signingScheme = account.signingScheme;
   }
-};
-initFavicon();
+}
 
-let authCode: string = '';
+export interface InitParams {
+  network: MizuSupportNetwork;
+  manifestURL: string;
+  appId?: string;
+}
 
-export class MizuWallet implements AdapterPlugin {
-  readonly url = WALLET_WEB_URL;
-  readonly name = WALLET_NAME;
+export class MizuWallet implements AptosWallet {
+  readonly url: string = WALLET_WEB_URL;
+  readonly version = '1.0.0';
+  readonly name: string = WALLET_NAME;
   readonly icon = WALLET_ICON;
+  chains = APTOS_CHAINS;
+  accounts: MizuWalletAccount[] = [];
 
-  provider: Mizu | undefined;
-  readyState: WalletReadyState = WalletReadyState.Installed;
+  provider:
+    | {
+        address: string;
+        network: Network;
+      }
+    | undefined;
 
-  constructor(args: { appId: string; network: Network.MAINNET | Network.TESTNET }) {
-    if (!args.appId) throw new Error('MizuWallet: appId is required');
+  mizuClient: Mizu;
+  telegramMiniAppHelper: TelegramMiniAppHelper | undefined;
+  websiteHelper: WebsiteHelper | undefined;
+  accountInfo: AccountInfo | undefined;
+
+  get features(): AptosFeatures {
+    return {
+      'aptos:connect': {
+        version: '1.0.0',
+        connect: this.connect,
+      },
+      'aptos:network': {
+        version: '1.0.0',
+        network: this.network,
+      },
+      'aptos:disconnect': {
+        version: '1.0.0',
+        disconnect: this.disconnect,
+      },
+      'aptos:signTransaction': {
+        version: '1.0.0',
+        signTransaction: this.signTransaction,
+      },
+      'aptos:signAndSubmitTransaction': {
+        version: '1.1.0',
+        signAndSubmitTransaction: this.signAndSubmitTransaction,
+      },
+      'aptos:signMessage': {
+        version: '1.0.0',
+        signMessage: this.signMessage,
+      },
+      'aptos:onAccountChange': {
+        version: '1.0.0',
+        onAccountChange: this.onAccountChange,
+      },
+      'aptos:onNetworkChange': {
+        version: '1.0.0',
+        onNetworkChange: this.onNetworkChange,
+      },
+      'aptos:account': {
+        version: '1.0.0',
+        account: this.account,
+      },
+    };
+  }
+
+  constructor(args: InitParams) {
     if (!args.network) throw new Error('MizuWallet: network is required');
 
-    this.provider = new Mizu({
-      appId: args.appId,
+    this.mizuClient = new Mizu({
+      appId: args.appId || DEFAULT_MIZUWALLET_ID(args.network),
       network: args.network,
     });
 
-    initStyles();
-  }
+    this.provider = {
+      network: args.network,
+      address: '',
+    };
 
-  async connect(): Promise<AccountInfo> {
-    try {
-      if (document.querySelector('[name=mizu-wallet-login]')) {
-        return Promise.reject('Already start login process');
-      }
-      /**
-       * Init Postmate iframe
-       *
-       * Check if user is logged in first.
-       */
-      const handshake = await new Postmate({
-        container: document.body, // Element to inject frame into
-        url: `${ORIGIN}/wallet/checkLogin?network=${this.provider?.network}`,
-        name: 'mizu-wallet-login',
-        classListArray: ['mizu-wallet-frame', 'mizu-wallet-login-frame'],
-        model: {
-          connectInfo: {
-            appId: this.provider?.appId,
-            network: this.provider?.network,
-          },
-          website: {
-            favicon: faviconData,
-            origin: window.location?.origin,
-            name: window.document.title,
-          },
-        },
+    if (args?.manifestURL) {
+      this.telegramMiniAppHelper = new TelegramMiniAppHelper({
+        manifestURL: args?.manifestURL,
+        network: args.network,
       });
-
-      /**
-       * Wait for handshake to complete
-       * And listen for events to get user data(sessionID, address, etc.)
-       */
-      handshake.on('close-frame', () => {
-        handshake.destroy();
-      });
-
-      return new Promise((resolve, _) => {
-        handshake.on('login', (data: any) => {
-          authCode = data.code;
-
-          resolve({
-            address: data.address,
-            publicKey: '',
-          });
-        });
-      });
-    } catch (error: any) {
-      console.log(error);
-      throw error;
     }
+
+    this.websiteHelper = new WebsiteHelper({
+      manifestURL: args.manifestURL,
+      network: args.network,
+      mizuClient: this.mizuClient,
+    });
   }
 
-  async account(): Promise<AccountInfo> {
-    const address = await this.provider?.getUserWalletAddress();
-    if (!address) throw `${MizuWalletName} Account Error`;
-    return {
-      address,
+  account: AptosGetAccountMethod = async (): Promise<AccountInfo> => {
+    return (this.accountInfo || {
+      address: '',
       publicKey: '',
-    };
-  }
+    }) as any;
+  };
 
-  async disconnect(): Promise<void> {
+  connect: AptosConnectMethod = async (): Promise<UserResponse<AccountInfo>> => {
     try {
-      authCode = '';
+      if (IsTelegram) {
+        if (this.telegramMiniAppHelper) {
+          this.accountInfo = (await this.telegramMiniAppHelper.connect()) as any;
+        } else {
+          throw new Error(`${MZ_MSG_TYPE.CONNECT} Please pass a valid manifestURL`);
+        }
+      } else {
+        this.accountInfo = (await this.websiteHelper?.connect()) as any;
+      }
 
-      /**
-       * Init Postmate iframe
-       * Remove session
-       */
-      const handshake = await new Postmate({
-        container: document.body, // Element to inject frame into
-        url: `${ORIGIN}/wallet/logout?network=${this.provider?.network}`,
-        name: 'mizu-wallet-logout',
-        classListArray: ['mizu-wallet-frame', 'mizu-wallet-logout-frame'],
-        model: {
-          connectInfo: {
-            appId: this.provider?.appId,
-            network: this.provider?.network,
-          },
-        },
-      });
-
-      /**
-       * Wait for handshake to complete
-       * And listen for events to get user data(sessionID, address, etc.)
-       */
-      handshake.on('close-frame', () => {
-        handshake.destroy();
-      });
-
-      await this.provider?.logout();
-    } catch (error: any) {
-      throw error;
+      return {
+        args: {
+          ...this.accountInfo,
+        } as any,
+        status: UserResponseStatus.APPROVED,
+      };
+    } catch (error) {
+      return {
+        status: UserResponseStatus.REJECTED,
+      };
     }
-  }
+  };
 
-  // this should be sdk maybe
-  // mutation MyMutation($appId: String = "", $appId1: String = "", $authCode: String = "", $payload: String = "") {
-  //   createOrderWithCode(appId: $appId1, authCode: $authCode, payload: $payload)
-  // }
-
-  async signAndSubmitTransaction(
-    transaction: Types.TransactionPayload,
-    options?: any,
-  ): Promise<{ hash: Types.HexEncodedBytes }> {
-    console.log(options);
-    /**
-     * Init Postmate iframe
-     * Check if user is logged in first.
-     *
-     * if it is, direct to create order.
-     * Create order and confirm it.
-     *
-     * send code, payload
-     */
-    try {
-      // create order by code
-      const orderId = await this.provider?.createOrderWithCode({
-        code: authCode,
-        payload: transaction,
-      });
-
-      if (!orderId) throw new Error('Transaction creation failed');
-
-      /**
-       * Init Postmate iframe
-       *
-       * Check if user is logged in first.
-       */
-      const handshake = await new Postmate({
-        container: document.body, // Element to inject frame into
-        url: `${ORIGIN}/wallet/checkLogin?redirect_url=${encodeURIComponent('/wallet/transaction')}&network=${this.provider?.network}`,
-        name: 'mizu-wallet-login',
-        classListArray: ['mizu-wallet-frame', 'mizu-wallet-sign-frame'],
-        model: {
-          connectInfo: {
-            appId: this.provider?.appId,
-            network: this.provider?.network,
-          },
-          website: {
-            favicon: faviconData,
-            origin: window.location?.origin,
-            name: window.document.title,
-          },
-          transactionInfo: {
-            orderId: orderId,
-            payload: transaction,
-          },
-        },
-      });
-
-      handshake.on('close-frame', () => {
-        handshake.destroy();
-      });
-
-      return new Promise((resolve, reject) => {
-        handshake.on('submitted', (data: any) => {
-          if (data.error) {
-            return reject(data.error);
-          }
-
-          resolve({
-            hash: data.transactions?.filter((tx: any) => tx.type === 2)?.[0]?.hash || '',
-          });
-        });
-      });
-    } catch (error: any) {
-      console.log(error);
-      throw error;
-    }
-  }
-
-  async signMessage(message: SignMessagePayload): Promise<SignMessageResponse> {
-    console.log(message);
-    throw new Error('Not implemented yet') as AptosWalletErrorResult;
-  }
-
-  async signTransaction(
-    transaction: Types.TransactionPayload,
-    options?: any,
-  ): Promise<Uint8Array | AptosWalletErrorResult> {
-    console.log(transaction, options);
-    throw new Error('Not implemented yet') as AptosWalletErrorResult;
-  }
-
-  async network(): Promise<NetworkInfo> {
+  network: AptosGetNetworkMethod = async (): Promise<NetworkInfo> => {
     return {
-      name: this.provider?.network!,
-      chainId: '',
+      name: this.provider!.network,
+      chainId: this.provider!.network === 'mainnet' ? 1 : 2,
     };
-  }
+  };
 
-  async onNetworkChange(callback: any): Promise<void> {
-    console.log(callback);
-    throw new Error('Not implemented yet');
-  }
+  disconnect: AptosDisconnectMethod = async (): Promise<void> => {
+    try {
+      if (IsTelegram) {
+        await this.telegramMiniAppHelper?.disconnect();
+      } else {
+        await this.websiteHelper?.disconnect();
+      }
+      this.provider = undefined;
+    } catch (error: any) {
+      throw error;
+    }
+  };
 
-  async onAccountChange(callback: any): Promise<void> {
-    console.log(callback);
-    throw new Error('Not implemented yet');
-  }
+  signTransaction: AptosSignTransactionMethod = async (
+    transaction: AnyRawTransaction,
+    asFeePayer?: boolean,
+  ): Promise<UserResponse<AccountAuthenticator>> => {
+    console.log(transaction, asFeePayer);
+    throw new AptosWalletError(AptosWalletErrorCode.InternalError);
+  };
+
+  signAndSubmitTransaction: AptosSignAndSubmitTransactionMethod = async (
+    transaction: AptosSignAndSubmitTransactionInput,
+  ): Promise<UserResponse<AptosSignAndSubmitTransactionOutput>> => {
+    try {
+      let response: any = {};
+      if (IsTelegram) {
+        response = await this.telegramMiniAppHelper?.signAndSubmitTransaction(transaction.payload);
+      } else {
+        response = await this.websiteHelper?.signAndSubmitTransaction(transaction.payload);
+      }
+
+      if (response?.hash) {
+        return {
+          args: response,
+          status: UserResponseStatus.APPROVED,
+        };
+      } else {
+        return {
+          status: UserResponseStatus.REJECTED,
+        };
+      }
+    } catch (err: any) {
+      console.error(err.message || err);
+      throw new AptosWalletError(AptosWalletErrorCode.InternalError);
+    }
+  };
+
+  signMessage: AptosSignMessageMethod = async (
+    input: AptosSignMessageInput,
+  ): Promise<UserResponse<AptosSignMessageOutput>> => {
+    console.log(input);
+    throw new AptosWalletError(AptosWalletErrorCode.InternalError);
+  };
+
+  onAccountChange: AptosOnAccountChangeMethod = async (): Promise<void> => {
+    return Promise.resolve();
+  };
+
+  onNetworkChange: AptosOnNetworkChangeMethod = async (): Promise<void> => {
+    return Promise.resolve();
+  };
 }
 

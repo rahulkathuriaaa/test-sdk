@@ -189,4 +189,3 @@ export const createOrderWithCodeMutation = gql`
     createOrderWithCode(appId: $appId, authCode: $authCode, payload: $payload)
   }
 `;
-

@@ -1,6 +1,6 @@
 {
-  "name": "@mizuwallet-sdk/core",
-  "version": "1.2.0",
+  "name": "@mizuwallet-sdk/protocol",
+  "version": "0.0.1",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -9,7 +9,8 @@
     "Aptos",
     "Mizu",
     "MizuWallet",
-    "Aptos Wallet"
+    "Aptos Wallet",
+    "protocol"
   ],
   "repository": {
     "type": "git",
@@ -26,20 +27,19 @@
     "pub": "pnpm publish --no-git-checks --access public"
   },
   "devDependencies": {
+    "@types/node": "^20.14.12",
     "typescript": "^5.4.5",
     "vite": "^5.2.11",
     "vite-plugin-dts": "^3.9.1"
   },
   "dependencies": {
-    "buffer": "^6.0.3",
-    "jwt-decode": "^4.0.0"
-  },
-  "peerDependencies": {
-    "@aptos-labs/ts-sdk": ">=1.14.0",
-    "graphql-request": ">=7.0.1"
+    "@microsoft/fetch-event-source": "^2.0.1",
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1"
   },
   "files": [
     "dist",
     "src"
   ]
 }
+
