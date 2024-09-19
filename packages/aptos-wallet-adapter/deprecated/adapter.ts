@@ -1,4 +1,3 @@
-import { InputGenerateTransactionPayloadData } from '@aptos-labs/ts-sdk';
 import {
   AccountInfo,
   AdapterPlugin,
@@ -119,14 +118,15 @@ export class MizuWallet implements AdapterPlugin {
         if (this.telegramMiniAppHelper) {
           return this.telegramMiniAppHelper.signAndSubmitTransaction(transaction as any);
         }
-      } else {
-        if (this.websiteHelper) {
-          const adaptedTransaction: InputGenerateTransactionPayloadData = {
-            // Adapt the transaction payload here
-          };
-          return this.websiteHelper.signAndSubmitTransaction(adaptedTransaction) as any;
-        }
       }
+      //  else {
+      //   if (this.websiteHelper) {
+      //     const adaptedTransaction: InputGenerateTransactionPayloadData = {
+      //       // Adapt the transaction payload here
+      //     };
+      //     return this.websiteHelper.signAndSubmitTransaction(adaptedTransaction) as any;
+      //   }
+      // }
       console.log(options);
       throw new Error(`${MZ_MSG_TYPE.TRANSACTION} Failed`);
     } catch (err: any) {
