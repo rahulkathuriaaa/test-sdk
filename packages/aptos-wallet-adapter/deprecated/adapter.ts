@@ -1,3 +1,4 @@
+import { InputGenerateTransactionPayloadData } from '@aptos-labs/ts-sdk';
 import {
   AccountInfo,
   AdapterPlugin,
@@ -9,7 +10,13 @@ import {
   WalletReadyState,
 } from '@aptos-labs/wallet-adapter-core';
 import { Mizu } from '@mizuwallet-sdk/core';
-import { MZ_MSG_TYPE, WALLET_ICON, WALLET_NAME, WALLET_WEB_URL } from '../src/config';
+import {
+  MizuSupportNetwork,
+  MZ_MSG_TYPE,
+  WALLET_ICON,
+  WALLET_NAME,
+  WALLET_WEB_URL,
+} from '../src/config';
 import TelegramMiniAppHelper from '../src/helpers/TelegramMiniAppHelper';
 import WebsiteHelper from '../src/helpers/WebsiteHelper';
 import { IsTelegram } from '../src/utils';
@@ -30,21 +37,31 @@ export class MizuWallet implements AdapterPlugin {
    *
    * @param args.telegram.manifestURL Manifest URL of your Telegram Mini App
    */
-  constructor(args?: { network: 'testnet' | 'mainnet'; telegram: { manifestURL: string } }) {
+
+  constructor(args?: {
+    network: MizuSupportNetwork;
+    telegram: { manifestURL: string };
+    mizuClient: Mizu;
+  }) {
     this.accountInfo = {
       address: '',
       publicKey: '',
     };
 
-    // Try to initialize TelegramMiniAppHelper
     if (args?.telegram?.manifestURL) {
       this.telegramMiniAppHelper = new TelegramMiniAppHelper({
-        manifestURL: args?.telegram?.manifestURL,
+        manifestURL: args.telegram.manifestURL,
         network: args.network,
       });
     }
 
-    this.websiteHelper = new WebsiteHelper();
+    if (args?.mizuClient) {
+      this.websiteHelper = new WebsiteHelper({
+        manifestURL: args.telegram?.manifestURL || '',
+        network: args.network,
+        mizuClient: args.mizuClient,
+      });
+    }
   }
 
   async connect(): Promise<AccountInfo> {
@@ -94,17 +111,20 @@ export class MizuWallet implements AdapterPlugin {
   }
 
   async signAndSubmitTransaction(
-    transaction: Types.TransactionPayload,
+    transaction: Types.TransactionPayload, // Adjust to correct type
     options?: any,
   ): Promise<{ hash: Types.HexEncodedBytes }> {
     try {
       if (IsTelegram) {
         if (this.telegramMiniAppHelper) {
-          return this.telegramMiniAppHelper.signAndSubmitTransaction(transaction);
+          return this.telegramMiniAppHelper.signAndSubmitTransaction(transaction as any);
         }
       } else {
         if (this.websiteHelper) {
-          return this.websiteHelper.signAndSubmitTransaction(transaction) as any;
+          const adaptedTransaction: InputGenerateTransactionPayloadData = {
+            // Adapt the transaction payload here
+          };
+          return this.websiteHelper.signAndSubmitTransaction(adaptedTransaction) as any;
         }
       }
       console.log(options);
@@ -144,4 +164,3 @@ export class MizuWallet implements AdapterPlugin {
     throw new Error('Not implemented yet');
   }
 }
-
